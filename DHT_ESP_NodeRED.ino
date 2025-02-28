@@ -1,23 +1,28 @@
-/*****************************************************************************************************************************
-**********************************    Author  : Ehab Magdy Abdullah                      *************************************
-**********************************    Linkedin: https://www.linkedin.com/in/ehabmagdyy/  *************************************
-**********************************    Youtube : https://www.youtube.com/@EhabMagdyy      *************************************
-******************************************************************************************************************************/
-#include <WiFi.h>  
+/*****************************************************************************************************************
+***************************    Author  : Ehab Magdy Abdullah                      ********************************
+***************************    Linkedin: https://www.linkedin.com/in/ehabmagdyy/  ********************************
+***************************    Youtube : https://www.youtube.com/@EhabMagdyy      ********************************
+******************************************************************************************************************/
+
+#ifdef ESP32
+#include <WiFi.h>
+#elif ESP8266
+#include <ESP8266WiFi.h>
+#endif
 #include <PubSubClient.h>
 #include "DHT.h"
 
-/* Digital pin connected to the DHT sensor */
+// Digital pin connected to the DHT sensor
 #define DHT_PIN       4
 
-/* I'm using DHT22, if you use DHT11 you can change DHT22 to DHT11 */
+// I'm using DHT22, if you use DHT11 you can change DHT22 to DHT11 
 #define DHT_TYPE      DHT22
 
 DHT dht(DHT_PIN, DHT_TYPE);
 
-const char* ssid = "2001";                        /* Your Wifi SSID */
-const char* password = "19821968";                /* Your Wifi Password */
-const char* mqtt_server = "test.mosquitto.org";   /* Mosquitto Server URL */
+#define ssid        "Your_Wifi_SSID"       /* Enter Your Wifi SSID */
+#define password    "Your_Wifi_Password"   /* Enter Your Wifi Password */
+#define mqtt_server "test.mosquitto.org"   /* Mosquitto Server URL */
 
 WiFiClient espClient;
 PubSubClient client(espClient);
@@ -39,8 +44,7 @@ void setup_wifi()
         Serial.print(".");
     }
 
-    Serial.println("");
-    Serial.println("WiFi connected");
+    Serial.println("\nWiFi connected");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
 }
@@ -79,21 +83,28 @@ void loop()
 {
     if(!client.connected()) { reconnect(); }
 
-    humidity = dht.readHumidity();
-    temperature = dht.readTemperature();
+    // Reading humidity & temperature values
+    float humidity = dht.readHumidity();
+    float temperature = dht.readTemperature();
 
-    char h[3] = {0};
-    char t[3] = {0};
+    // Check if readings are valid
+    if (isnan(humidity) || isnan(temperature)) {
+        Serial.println("Failed to read from DHT sensor!");
+        return;
+    }
 
-    h[0] = (uint8_t)humidity / 10 + '0';
-    h[1] += (uint8_t)humidity % 10 + '0';
-    t[0] += (uint8_t)temperature / 10 + '0';
-    t[1] += (uint8_t)temperature % 10 + '0';
+    char h[5];
+    char t[5];
 
-    /* Sending Data to Node-Red */
+    snprintf(h, sizeof(h), "%.1f", humidity);
+    snprintf(t, sizeof(t), "%.1f", temperature);
+
+    // Publish humidity & temperature to Node-Red
     client.publish("Ehab/DHT/Humidity", h, false);
-    client.publish("Ehab/DHT/Temp", t, false); 
+    client.publish("Ehab/DHT/Temp", t, false);
 
+
+    // printing humidity & temperature on the serial monitor
     Serial.print("Humidity: ");
     Serial.print(humidity);
     Serial.print("% - Temperature: ");
